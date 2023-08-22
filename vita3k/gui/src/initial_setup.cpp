@@ -17,6 +17,7 @@
 
 #include "private.h"
 
+#include <config/functions.h>
 #include <config/state.h>
 #include <gui/functions.h>
 #include <host/dialog/filesystem.hpp>
@@ -103,7 +104,11 @@ void draw_initial_setup(GuiState &gui, EmuEnvState &emuenv) {
     ImGui::PushFont(gui.vita_font);
     ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
     ImGui::SetNextWindowSize(display_size, ImGuiCond_Always);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.f);
     ImGui::Begin("##initial_setup", &emuenv.cfg.initial_setup, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings);
+    ImGui::PopStyleVar(2);
+
     ImGui::GetBackgroundDrawList()->AddRectFilled(ImVec2(0.f, 0), display_size, IM_COL32(112.f, 124.f, 246.f, 255.f), 0.f, ImDrawFlags_RoundCornersAll);
     ImGui::SetNextWindowPos(ImVec2(98.f * SCALE.x, 30 * SCALE.y), ImGuiCond_Always);
     ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 6.f * SCALE.x);
@@ -126,11 +131,10 @@ void draw_initial_setup(GuiState &gui, EmuEnvState &emuenv) {
     case SELECT_LANGUAGE:
         title_str = lang["select_language"];
         ImGui::SetNextWindowPos(ImVec2(198.f * SCALE.x, 126.f * SCALE.y), ImGuiCond_Always);
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.f);
         ImGui::BeginChild("##lang_list", ImVec2(WINDOW_SIZE.x - (200.f * SCALE.x), WINDOW_SIZE.y - (108.f * SCALE.y)), false, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings);
         ImGui::Columns(3, nullptr, false);
-        ImGui::SetColumnWidth(0, 96.f * SCALE.x);
-        ImGui::SetColumnWidth(1, 30.f * SCALE.x);
+        ImGui::SetColumnWidth(0, 90.f * SCALE.x);
+        ImGui::SetColumnWidth(1, 36.f * SCALE.x);
         ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.f, 0.5f));
         ImGui::PushStyleColor(ImGuiCol_Header, SELECT_COLOR);
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, SELECT_COLOR_HOVERED);
@@ -154,7 +158,6 @@ void draw_initial_setup(GuiState &gui, EmuEnvState &emuenv) {
         ImGui::PopStyleColor(3);
         ImGui::Columns(1);
         ImGui::EndChild();
-        ImGui::PopStyleVar();
         break;
     case SELECT_PREF_PATH:
         title_str = lang["select_pref_path"];
@@ -210,6 +213,14 @@ void draw_initial_setup(GuiState &gui, EmuEnvState &emuenv) {
     case SELECT_INTERFACE_SETTINGS:
         title_str = lang["select_interface_settings"];
         ImGui::SetCursorPosY((WINDOW_SIZE.y / 2.f) - ImGui::GetFontSize());
+        ImGui::Checkbox("Display Info Message", &emuenv.cfg.display_info_message);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Uncheck the box to display info message in log only.");
+        ImGui::SameLine();
+        ImGui::Checkbox("Display System Apps", &emuenv.cfg.display_system_apps);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Uncheck the box to disable the display of system apps on the home screen.\nThey will be shown in the main menu bar only.");
+        ImGui::Spacing();
         ImGui::Checkbox("Info Bar Visible", &emuenv.cfg.show_info_bar);
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("Check the box to show info bar inside app selector.\nInfo bar is clock, battery level and notification center.");
@@ -233,29 +244,31 @@ void draw_initial_setup(GuiState &gui, EmuEnvState &emuenv) {
         ImGui::SetCursorPos(ImVec2((WINDOW_SIZE.x / 2.f) - (ImGui::CalcTextSize(completed_setup).x / 2.f), (WINDOW_SIZE.y / 2.f) - ImGui::GetFontSize()));
         ImGui::Text("%s", completed_setup);
         ImGui::SetCursorPos(BIG_BUTTON_POS);
-        if (ImGui::Button(common["ok"].c_str(), BIG_BUTTON_SIZE) || ImGui::IsKeyPressed(static_cast<ImGuiKey>(emuenv.cfg.keyboard_button_cross)))
+        if (ImGui::Button(common["ok"].c_str(), BIG_BUTTON_SIZE) || ImGui::IsKeyPressed(static_cast<ImGuiKey>(emuenv.cfg.keyboard_button_cross))) {
             emuenv.cfg.initial_setup = true;
+            config::serialize_config(emuenv.cfg, emuenv.base_path);
+        }
         break;
     default: break;
     }
 
-    ImGui::SetWindowFontScale(1.f);
+    ImGui::SetWindowFontScale(RES_SCALE.x);
     ImGui::EndChild();
+    ImGui::PopStyleVar(3);
     ImGui::PopStyleColor();
 
     // Draw Button
     ImGui::SetWindowFontScale(1.2f * RES_SCALE.x);
-    ImGui::SetCursorPos(ImVec2(10.f * SCALE.x, display_size.y - BUTTON_SIZE.y - (14.f * SCALE.y)));
+    ImGui::SetCursorPos(ImVec2(10.f * SCALE.x, display_size.y - BUTTON_SIZE.y - (16.f * SCALE.y)));
     if ((setup > SELECT_LANGUAGE) && ImGui::Button(lang["back"].c_str(), BUTTON_SIZE) || (setup > SELECT_LANGUAGE) && ImGui::IsKeyPressed(static_cast<ImGuiKey>(emuenv.cfg.keyboard_button_circle)))
         setup = (InitialSetup)(setup - 1);
-    ImGui::SetCursorPos(ImVec2(display_size.x - BUTTON_SIZE.x - (14.f * SCALE.x), display_size.y - BUTTON_SIZE.y - (14.f * SCALE.y)));
-    if ((setup < FINISHED) && ImGui::Button(lang["next"].c_str(), BUTTON_SIZE) || ImGui::IsKeyPressed(static_cast<ImGuiKey>(emuenv.cfg.keyboard_button_cross)))
+    ImGui::SetCursorPos(ImVec2(display_size.x - BUTTON_SIZE.x - (14.f * SCALE.x), display_size.y - BUTTON_SIZE.y - (16.f * SCALE.y)));
+    if ((setup < FINISHED) && ImGui::Button(lang["next"].c_str(), BUTTON_SIZE) || ImGui::IsKeyPressed(static_cast<ImGuiKey>(emuenv.cfg.keyboard_button_cross))) {
         setup = (InitialSetup)(setup + 1);
-    ImGui::SetWindowFontScale(1.f);
+        config::serialize_config(emuenv.cfg, emuenv.base_path);
+    }
 
-    ImGui::PopStyleVar(3);
-
-    ImGui::SetWindowFontScale(1.f);
+    ImGui::SetWindowFontScale(RES_SCALE.x);
     ImGui::End();
     ImGui::PopFont();
 }
