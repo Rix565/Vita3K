@@ -292,6 +292,43 @@ message("OpenSSL libraries: ${OPENSSL_LIBRARIES}")
 add_library(ssl INTERFACE)
 target_link_libraries(ssl INTERFACE OpenSSL::SSL)
 
+find_package(CURL QUIET)
+if(NOT CURL_FOUND)
+	if(MSVC)
+		message("Curl not found, using prebuilt version")
+
+		if(NOT EXISTS "${CMAKE_BINARY_DIR}/external/curl.zip")
+			message(STATUS "Downloading curl...")
+			file(DOWNLOAD https://curl.se/windows/dl-8.4.0_6/curl-8.4.0_6-win64-mingw.zip
+				"${CMAKE_BINARY_DIR}/external/curl.zip" SHOW_PROGRESS)
+		endif()
+
+		if(NOT EXISTS "${CMAKE_BINARY_DIR}/external/curl")
+			file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/external/curl")
+			execute_process(COMMAND ${CMAKE_COMMAND} -E tar xf "${CMAKE_BINARY_DIR}/external/curl.zip"
+				WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/external/curl")
+		endif()
+                
+		set(CURL_LIBRARY "${CMAKE_BINARY_DIR}/external/curl/curl-8.4.0_6-win64-mingw/lib")
+		set(CURL_INCLUDE_DIR "${CMAKE_BINARY_DIR}/external/curl/curl-8.4.0_6-win64-mingw/include")
+	endif()
+
+	find_package(CURL REQUIRED)
+endif()
+
+message("libcurl include dir: ${CURL_INCLUDE_DIR}")
+message("libcurl libraries: ${CURL_LIBRARIES}")
+
+add_library(libcurl INTERFACE)
+target_link_libraries(libcurl INTERFACE CURL::libcurl)
+
+get_directory_property(_dir_vars DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} VARIABLES)
+foreach(_var ${_dir_vars})
+    if(_var MATCHES "^[a-zA-Z_][a-zA-Z_0-9]*$")
+        message("${_var} = ${${_var}}")
+    endif()
+endforeach()
+
 file(GLOB LIBATRAC9_SOURCES
 	LibAtrac9/C/src/*.c
 	LibAtrac9/C/src/*.h
